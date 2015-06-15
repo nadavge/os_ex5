@@ -1,3 +1,12 @@
+/*
+ * clftp.cpp
+ *
+ * A file transfer protocol client
+ *
+ * Author: Daniel Danon
+ *         Nadav Geva
+ */
+
 #include <iostream>
 #include <stdlib.h>
 #include <unistd.h>
@@ -10,18 +19,24 @@
 
 using namespace std;
 
-#define USAGE "Usage: clftp server-port server-hostname file-to-transfer filename-in-server"
+// ================================= CONSTANTS ======================================= //
+
 #define ARG_PORT 1
 #define ARG_HOSTNAME 2
 #define ARG_FILE_LOCAL 3
 #define ARG_FILE_DEST 4
 #define NUM_ARGS 5
 
+#define MIN_PORT 1
+#define MAX_PORT 65535
+
 #define HERROR_MESSAGE(libraryName) GENERAL_ERROR_MESSAGE(libraryName, h_errno)
 #define ERROR_MESSAGE(libraryName) GENERAL_ERROR_MESSAGE(libraryName, errno)
 #define GENERAL_ERROR_MESSAGE(libraryName, errVar) cerr << "Error: function:" << libraryName << "errno:" << errVar << "." << endl
-#define MIN_PORT 1
-#define MAX_PORT 65535
+#define USAGE "Usage: clftp server-port server-hostname file-to-transfer filename-in-server"
+
+// ================================= IMPLEMENTATION ================================== //
+
 int main(int argc, char *argv[])
 {
 	int sockfd = -1;
