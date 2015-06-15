@@ -40,6 +40,8 @@ static char gBuffer[BUFFER_SIZE] = {0};
 #define GENERAL_ERROR_MESSAGE(libraryName, errVar) cerr << "Error: function:" << libraryName << "errno:" << errVar << "." << endl
 #define USAGE "Usage: srftp server-port max-file-size"
 
+//TODO Add pthread array with used bits to signal free threads
+
 // ================================= IMPLEMENTATION ================================== //
 
 //TODO Document/REMOVE
@@ -61,9 +63,9 @@ int sendBuffer (int sockfd, int bufferSize){
 	return bytesSent;
 }
 
-//TODO  Reuse for ftp
+//TODO implement as entry function
 /*
-int magicFunction()
+void* connectionHandler(void* args)
 {
 	if (send(sockfd, &fileSize, sizeof(fileSize), 0) < 0)
 	{
@@ -103,7 +105,7 @@ int magicFunction()
 int main(int argc, char *argv[])
 {
 	int sockfd = -1;
-	int connSocket = -1;
+	int* connfd = nullptr;
 	int port = -1;
 	int maxFileSize = -1;
 	struct sockaddr_in servAddr = {0};
@@ -157,12 +159,20 @@ int main(int argc, char *argv[])
 	
 	for ever // It's a joke, don't kill us :(
 	{
-		connSocket = accept(sockfd, (struct sockaddr*) &clientAddr, &clientLen);
-		if (connSocket < 0)
+		connfd = new(nothrow) int(0);
+		if (connfd == nullptr)
+		{
+			ERROR_MESSAGE("new");
+			goto error;
+		}
+
+		*connfd = accept(sockfd, (struct sockaddr*) &clientAddr, &clientLen);
+		if (*connfd < 0)
 		{
 			ERROR_MESSAGE("accept");
 			goto error;
 		}
+
 		//TODO initiate new thread
 	}
 
