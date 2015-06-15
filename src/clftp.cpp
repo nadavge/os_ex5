@@ -24,11 +24,15 @@ using namespace std;
 #define ARG_PORT 1
 #define ARG_HOSTNAME 2
 #define ARG_FILE_LOCAL 3
-#define ARG_FILE_DEST 4
+#define ARG_FILE_SERVER 4
 #define NUM_ARGS 5
 
 #define MIN_PORT 1
 #define MAX_PORT 65535
+
+#define BUFFER_SIZE 1024
+
+static char gBuffer[BUFFER_SIZE] = {0};
 
 #define HERROR_MESSAGE(libraryName) GENERAL_ERROR_MESSAGE(libraryName, h_errno)
 #define ERROR_MESSAGE(libraryName) GENERAL_ERROR_MESSAGE(libraryName, errno)
@@ -37,21 +41,43 @@ using namespace std;
 
 // ================================= IMPLEMENTATION ================================== //
 
+//TODO Document
+int sendBuffer (int sockfd, int bufferSize){
+	int bytesSent = 0;
+	int sent = -1;
+
+	while (bytesSent < bufferSize)
+	{
+		sent = send(sockfd, gBuffer+bytesSent, bufferSize-bytesSent, 0);
+		if (sent < 0)
+		{
+			return -1;
+		}
+
+		bytesSent += sent;
+	}
+
+	return bytesSent;
+}
+
 int main(int argc, char *argv[])
 {
 	int sockfd = -1;
 	int port = -1;
-	int n = -1;
 	struct sockaddr_in servAddr = {0};
 	struct hostent *server = nullptr;
 	struct stat fileStat = {0};
 	off_t fileSize = 0;
 	FILE* file = nullptr;
+	bool errorOccurred = false;
+	
+	bool fileSizeOk = false;
+	int bytesRead = 0;
+	
 	if (argc < NUM_ARGS) {
 		cout << USAGE << endl;
 		exit(1);
 	}
-
 
 	port = strtol(argv[ARG_PORT], nullptr, 10);
 	if (port < MIN_PORT || MAX_PORT < port)
@@ -92,9 +118,9 @@ int main(int argc, char *argv[])
 	}
 
 	servAddr.sin_family = AF_INET;
-	bcopy((char *)server->h_addr,
-		  (char *)&servAddr.sin_addr.s_addr,
-		  server->h_length);
+	memcpy((char *)&servAddr.sin_addr.s_addr,
+		   (char *)server->h_addr,
+		   server->h_length);
 	servAddr.sin_port = htons(port);
 	
 	if (connect(sockfd,(struct sockaddr *) &servAddr,sizeof(servAddr)) < 0)
@@ -104,18 +130,48 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-/*	
-	n = write(sockfd,buffer,strlen(buffer));
-	if (n < 0)
-		error("ERROR writing to socket");
-	bzero(buffer,256);
-	n = read(sockfd,buffer,255);
-	if (n < 0)
-		error("ERROR reading from socket");
-	printf("%s\n",buffer);
-*/
+	if (send(sockfd, &fileSize, sizeof(fileSize), 0) < 0)
+	{
+		ERROR_MESSAGE("send");
+		goto error;
+	}
+
+	if (recv(sockfd, &fileSizeOk, sizeof(fileSizeOk), 0) < 0)
+	{
+		ERROR_MESSAGE("recv");
+		goto error;
+	}
+
+	if (send(sockfd, argv[ARG_FILE_SERVER], strlen(argv[ARG_FILE_SERVER])*sizeof(char), 0) < 0)
+	{
+		ERROR_MESSAGE("send");
+		goto error;
+	}
+
+	while ((bytesRead=fread(gBuffer, BUFFER_SIZE, 1, file)) > 0)
+	{
+		if (sendBuffer(sockfd, bytesRead) < 0)
+		{
+			ERROR_MESSAGE("send");
+			goto error;		
+		}
+	}
+
+	// If while ended before EOF
+	if (! feof(file))
+	{
+		ERROR_MESSAGE("fread");
+		goto error;
+	}
+
+	goto finish;
+
+error:
+	errorOccurred = true;
+
+finish:
 	fclose(file);
 	close(sockfd);
 
-	return 0;
+	return errorOccurred ? 1 : 0;
 }
