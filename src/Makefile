@@ -1,10 +1,10 @@
 CC=g++
-FLAGS=-Wall -pthread -std=c++11 -g #TODO remove debugging
+FLAGS=-Wall -pthread -std=c++11
 
 TAR=tar
 TARFLAGS=cvf
 TARNAME=ex5.tar
-TARSRCS=#TODO add files
+TARSRCS=clftp.cpp srftp.cpp utils.* README Makefile performance.jpg
 
 all: clftp srftp
 
