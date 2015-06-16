@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include "utils.h"
 
 using namespace std;
 
@@ -118,15 +119,13 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	port = strtol(argv[ARG_PORT], nullptr, 10);
-	if (port < MIN_PORT || MAX_PORT < port)
+	if (strToNum(argv[ARG_PORT], &port) == -1 || port < MIN_PORT || MAX_PORT < port)
 	{
 		cout << USAGE << endl;
 		exit(1);
 	}
 	
-	maxFileSize = strtol(argv[ARG_PORT], nullptr, 10);
-	if (maxFileSize < 0)
+	if (strToNum(argv[ARG_MAX_FILE_SIZE], &maxFileSize) == -1 || maxFileSize < 0)
 	{
 		cout << USAGE << endl;
 		exit(1);

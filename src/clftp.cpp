@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include "utils.h"
 
 using namespace std;
 
@@ -79,8 +80,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	port = strtol(argv[ARG_PORT], nullptr, 10);
-	if (port < MIN_PORT || MAX_PORT < port)
+	if (strToNum(argv[ARG_PORT], &port) == -1 || port < MIN_PORT || MAX_PORT < port)
 	{
 		cout << USAGE << endl;
 		exit(1);
@@ -148,20 +148,21 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	while ((bytesRead=fread(gBuffer, BUFFER_SIZE, 1, file)) > 0)
+	while(feof(file) != 0)
 	{
+		bytesRead = fread(gBuffer, BUFFER_SIZE, 1, file);
+		
+		if (ferror(file) != 0)
+		{
+			ERROR_MESSAGE("fread");
+			goto error;
+		}
+
 		if (sendBuffer(sockfd, bytesRead) < 0)
 		{
 			ERROR_MESSAGE("send");
 			goto error;		
 		}
-	}
-
-	// If while ended before EOF
-	if (! feof(file))
-	{
-		ERROR_MESSAGE("fread");
-		goto error;
 	}
 
 	goto finish;
