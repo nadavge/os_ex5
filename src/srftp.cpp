@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include "utils.h"
@@ -65,6 +66,11 @@ void* connectionHandler(void* connfd)
 	int bytesRead = 0;
 	int bytesWritten = 0;
 	int totalBytes = 0;
+
+	struct timeval tv_start = {0};
+	struct timeval tv_finish = {0};
+
+	gettimeofday(&tv_start, NULL);
 
 	char buffer[BUFFER_SIZE] = {0};
 
@@ -137,6 +143,21 @@ void* connectionHandler(void* connfd)
 		}
 
 	} while(totalBytes < fileSize);
+
+	gettimeofday(&tv_finish, NULL);
+
+	if (tv_finish.tv_usec < tv_start.tv_usec)
+	{
+		cout << tv_finish.tv_sec-tv_start.tv_sec+1 << ".";
+		printf("%06d", (int)(tv_finish.tv_usec-tv_start.tv_usec+1000000));
+		cout << endl;
+	}
+	else
+	{
+		cout << tv_finish.tv_sec-tv_start.tv_sec << ".";
+		printf("%06d", (int)(tv_finish.tv_usec-tv_start.tv_usec));
+		cout << endl;
+	}
 
 	goto finish;
 
