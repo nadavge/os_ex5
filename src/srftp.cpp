@@ -35,6 +35,8 @@ using namespace std;
 
 #define BUFFER_SIZE 1024
 
+//TODO remove
+#define DBG(x) 0
 #define HERROR_MESSAGE(libraryName) GENERAL_ERROR_MESSAGE(libraryName, h_errno)
 #define ERROR_MESSAGE(libraryName) GENERAL_ERROR_MESSAGE(libraryName, errno)
 #define GENERAL_ERROR_MESSAGE(libraryName, errVar) cerr << "Error: function:" << libraryName << "errno:" << errVar << "." << endl
@@ -63,16 +65,19 @@ void* connectionHandler(void* connfd)
 
 	delete (int*)connfd; // Release memory as soon as possible to avoid memory leaks
 
-	if (recv(sockfd, &fileSize, sizeof(fileSize), 0) < 0)
+	// TODO maybe remove
+	if ((bytesRead=recv(sockfd, &fileSize, sizeof(fileSize), 0)) < 0)
 	{
 		ERROR_MESSAGE("recv");
 		goto error;
 	}
 	fileSize = ntohl(fileSize);
-
+	
 	fileSizeOk = fileSize <= gMaxFileSize;
+	DBG("got filesize: " << fileSize);
 
 	// We assume the size to be 1. If not one, might cause trouble
+	DBG("sending if ok: " << fileSizeOk << "(" << sizeof(fileSizeOk) << ")");
 	if (send(sockfd, &fileSizeOk, sizeof(fileSizeOk), 0) < 0)
 	{
 		ERROR_MESSAGE("send");
@@ -84,19 +89,21 @@ void* connectionHandler(void* connfd)
 		goto finish;
 	}
 
-	if ((bytesRead = recv(sockfd, &fileName, sizeof(fileName), 0)) < 0)
+	DBG("Getting file name (and maybe content)");
+	if ((bytesRead = recv(sockfd, fileName, sizeof(fileName), 0)) < 0)
 	{
 		ERROR_MESSAGE("recv");
 		goto error;
 	}
-
+	
+	// TODO remove
+	DBG("bytes read " << bytesRead << ", filenamelen:" << strlen(fileName)); 
+	// TODO Remove
 	fileNameLen = strlen(fileName);
-
+	DBG("filename: " << fileName);
 	file = fopen(fileName, "wb");
-	if (file < 0)
+	if (file == NULL)
 	{
-		file = nullptr;
-
 		ERROR_MESSAGE("fopen");
 		goto error;
 	}
@@ -108,33 +115,34 @@ void* connectionHandler(void* connfd)
 	
 	// Set bytesRead to hold the amount of DATA bytes (exclude the file name from the message)
 	bytesRead = bytesRead - (fileNameLen + 1);
-	totalBytes = bytesRead;
+	totalBytes = 0;
 	memcpy(buffer, &fileName[fileNameLen+1], bytesRead);
-
 	do
 	{
+		DBG("Need to write " << bytesRead);
 		bytesWritten = 0;
-		do
+		
+		while (bytesWritten < bytesRead)	
 		{
 			bytesWritten += fwrite(&buffer[bytesWritten], sizeof(char), bytesRead-bytesWritten, file);
 
-			if (ferror(file) != 0)
+			if (ferror(file))
 			{
 				ERROR_MESSAGE("fwrite");
 			}
+		}
 
-		} while (bytesWritten < bytesRead);
+		totalBytes += bytesWritten;
 
-		if ((bytesRead = recv(sockfd, &fileName, sizeof(fileName), 0)) < 0)
+		if ((bytesRead = recv(sockfd, buffer, sizeof(buffer), 0)) < 0)
 		{
 			ERROR_MESSAGE("recv");
 			goto error;
 		}
 
-		totalBytes += bytesRead;
-
 	} while(totalBytes < fileSize);
-	
+
+	DBG("Finished successfully!!");	
 	goto finish;
 
 error:
