@@ -43,7 +43,15 @@ static char gBuffer[BUFFER_SIZE] = {0};
 
 // ================================= IMPLEMENTATION ================================== //
 
-//TODO Document
+/**
+* @brief Sends a buffer from memory through a socket
+*
+* @param sockfd the socket fd
+* @param buffer the buffer
+* @param bufferSize the size of the buffer
+*
+* @return the amount of bytes sent. if an error occurred, -1
+*/
 int sendBuffer (int sockfd, char* buffer, int bufferSize){
 	int bytesSent = 0;
 	int sent = -1;
@@ -92,7 +100,7 @@ int main(int argc, char *argv[])
 	if (file == nullptr)
 	{
 		// TODO check if to print - forum
-		cout << USAGE << endl;
+		ERROR_MESSAGE("fopen");
 		goto error;
 	}
 
