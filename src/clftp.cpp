@@ -130,6 +130,9 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	// Convert to network byte-order - if ever used again, remember to convert back
+	// TODO check we don't use it again (Do only after ex is complete)
+	fileSize = htonl(fileSize);
 	if (send(sockfd, &fileSize, sizeof(fileSize), 0) < 0)
 	{
 		ERROR_MESSAGE("send");
@@ -150,7 +153,7 @@ int main(int argc, char *argv[])
 
 	while(feof(file) != 0)
 	{
-		bytesRead = fread(gBuffer, BUFFER_SIZE, 1, file);
+		bytesRead = fread(gBuffer, sizeof(char), BUFFER_SIZE, file);
 		
 		if (ferror(file) != 0)
 		{

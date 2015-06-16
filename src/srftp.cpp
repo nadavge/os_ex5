@@ -8,6 +8,7 @@
  */
 
 #include <iostream>
+#include <climits>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -34,85 +35,129 @@ using namespace std;
 
 #define BUFFER_SIZE 1024
 
-static char gBuffer[BUFFER_SIZE] = {0};
-
 #define HERROR_MESSAGE(libraryName) GENERAL_ERROR_MESSAGE(libraryName, h_errno)
 #define ERROR_MESSAGE(libraryName) GENERAL_ERROR_MESSAGE(libraryName, errno)
 #define GENERAL_ERROR_MESSAGE(libraryName, errVar) cerr << "Error: function:" << libraryName << "errno:" << errVar << "." << endl
 #define USAGE "Usage: srftp server-port max-file-size"
 
-//TODO Add pthread array with used bits to signal free threads
+// ================================= GLOBALS ========================================= //
+
+static int gMaxFileSize = -1;
 
 // ================================= IMPLEMENTATION ================================== //
 
-//TODO Document/REMOVE
-int sendBuffer (int sockfd, int bufferSize){
-	int bytesSent = 0;
-	int sent = -1;
-
-	while (bytesSent < bufferSize)
-	{
-		sent = send(sockfd, gBuffer+bytesSent, bufferSize-bytesSent, 0);
-		if (sent < 0)
-		{
-			return -1;
-		}
-
-		bytesSent += sent;
-	}
-
-	return bytesSent;
-}
-
-//TODO implement as entry function
-/*
-void* connectionHandler(void* args)
+// TODO document
+void* connectionHandler(void* connfd)
 {
-	if (send(sockfd, &fileSize, sizeof(fileSize), 0) < 0)
+	int fileSize = -1;
+	int sockfd = *(int*)connfd;
+	bool fileSizeOk = false;
+	FILE* file = nullptr;
+	char fileName[NAME_MAX + 1] = {0};
+	int fileNameLen = 0;
+	int bytesRead = 0;
+	int bytesWritten = 0;
+	int totalBytes = 0;
+
+	char buffer[BUFFER_SIZE] = {0};
+
+	delete (int*)connfd; // Release memory as soon as possible to avoid memory leaks
+
+	if (recv(sockfd, &fileSize, sizeof(fileSize), 0) < 0)
+	{
+		ERROR_MESSAGE("recv");
+		goto error;
+	}
+	fileSize = ntohl(fileSize);
+
+	fileSizeOk = fileSize <= gMaxFileSize;
+
+	// We assume the size to be 1. If not one, might cause trouble
+	if (send(sockfd, &fileSizeOk, sizeof(fileSizeOk), 0) < 0)
 	{
 		ERROR_MESSAGE("send");
 		goto error;
 	}
 
-	if (recv(sockfd, &fileSizeOk, sizeof(fileSizeOk), 0) < 0)
+	if (! fileSizeOk)
+	{
+		goto finish;
+	}
+
+	if ((bytesRead = recv(sockfd, &fileName, sizeof(fileName), 0)) < 0)
 	{
 		ERROR_MESSAGE("recv");
 		goto error;
 	}
 
-	if (send(sockfd, argv[ARG_FILE_SERVER], strlen(argv[ARG_FILE_SERVER])*sizeof(char), 0) < 0)
+	fileNameLen = strlen(fileName);
+
+	file = fopen(fileName, "wb");
+	if (file < 0)
 	{
-		ERROR_MESSAGE("send");
+		file = nullptr;
+
+		ERROR_MESSAGE("fopen");
 		goto error;
 	}
+	
+	/*
+	 * When we read into fileName, we might read more bytes than the file name, therefore
+	 * we must copy the rest into the buffer to be put into the file
+	 */
+	
+	// Set bytesRead to hold the amount of DATA bytes (exclude the file name from the message)
+	bytesRead = bytesRead - (fileNameLen + 1);
+	totalBytes = bytesRead;
+	memcpy(buffer, &fileName[fileNameLen+1], bytesRead);
 
-	while ((bytesRead=fread(gBuffer, BUFFER_SIZE, 1, file)) > 0)
+	do
 	{
-		if (sendBuffer(sockfd, bytesRead) < 0)
+		bytesWritten = 0;
+		do
 		{
-			ERROR_MESSAGE("send");
-			goto error;		
-		}
-	}
+			bytesWritten += fwrite(&buffer[bytesWritten], sizeof(char), bytesRead-bytesWritten, file);
 
-	// If while ended before EOF
-	if (! feof(file))
+			if (ferror(file) != 0)
+			{
+				ERROR_MESSAGE("fwrite");
+			}
+
+		} while (bytesWritten < bytesRead);
+
+		if ((bytesRead = recv(sockfd, &fileName, sizeof(fileName), 0)) < 0)
+		{
+			ERROR_MESSAGE("recv");
+			goto error;
+		}
+
+		totalBytes += bytesRead;
+
+	} while(totalBytes < fileSize);
+	
+	goto finish;
+
+error:
+finish:
+	if (file != nullptr)
 	{
-		ERROR_MESSAGE("fread");
-		goto error;
+		fclose(file);
 	}
-}*/
+	close(sockfd);
+
+	return nullptr;
+}
 
 int main(int argc, char *argv[])
 {
 	int sockfd = -1;
 	int* connfd = nullptr;
 	int port = -1;
-	int maxFileSize = -1;
 	struct sockaddr_in servAddr = {0};
 	struct sockaddr_in clientAddr = {0};
 	socklen_t clientLen = 0;
 	bool errorOccurred = false;
+	pthread_t tid = 0;
 	
 	if (argc < NUM_ARGS) {
 		cout << USAGE << endl;
@@ -125,7 +170,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	
-	if (strToNum(argv[ARG_MAX_FILE_SIZE], &maxFileSize) == -1 || maxFileSize < 0)
+	if (strToNum(argv[ARG_MAX_FILE_SIZE], &gMaxFileSize) == -1 || gMaxFileSize < 0)
 	{
 		cout << USAGE << endl;
 		exit(1);
@@ -168,11 +213,15 @@ int main(int argc, char *argv[])
 		*connfd = accept(sockfd, (struct sockaddr*) &clientAddr, &clientLen);
 		if (*connfd < 0)
 		{
+			delete connfd;
+
 			ERROR_MESSAGE("accept");
 			goto error;
 		}
 
-		//TODO initiate new thread
+		pthread_create(&tid, NULL, connectionHandler, connfd);
+		pthread_detach(tid);
+
 	}
 
 	goto finish;
@@ -180,7 +229,6 @@ int main(int argc, char *argv[])
 error:
 	errorOccurred = true;
 
-//TODO match for server
 finish:
 	close(sockfd);
 
