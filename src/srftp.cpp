@@ -35,8 +35,6 @@ using namespace std;
 
 #define BUFFER_SIZE 1024
 
-//TODO remove
-#define DBG(x) 0
 #define HERROR_MESSAGE(libraryName) GENERAL_ERROR_MESSAGE(libraryName, h_errno)
 #define ERROR_MESSAGE(libraryName) GENERAL_ERROR_MESSAGE(libraryName, errno)
 #define GENERAL_ERROR_MESSAGE(libraryName, errVar) cerr << "Error: function:" << libraryName << " errno:" << errVar << "." << endl
@@ -48,15 +46,22 @@ static int gMaxFileSize = -1;
 
 // ================================= IMPLEMENTATION ================================== //
 
-// TODO document
+/**
+* @brief Handles incoming connections
+*
+* @param connfd int* of the fd for the connection socket. Needs to be freed inside
+*/
 void* connectionHandler(void* connfd)
 {
-	int fileSize = -1;
 	int sockfd = *(int*)connfd;
+	
+	int fileSize = -1;
 	bool fileSizeOk = false;
+
 	FILE* file = nullptr;
 	char fileName[NAME_MAX + 1] = {0};
 	int fileNameLen = 0;
+
 	int bytesRead = 0;
 	int bytesWritten = 0;
 	int totalBytes = 0;
@@ -65,7 +70,6 @@ void* connectionHandler(void* connfd)
 
 	delete (int*)connfd; // Release memory as soon as possible to avoid memory leaks
 
-	// TODO maybe remove
 	if ((bytesRead=recv(sockfd, &fileSize, sizeof(fileSize), 0)) < 0)
 	{
 		ERROR_MESSAGE("recv");
@@ -74,10 +78,8 @@ void* connectionHandler(void* connfd)
 	fileSize = ntohl(fileSize);
 	
 	fileSizeOk = fileSize <= gMaxFileSize;
-	DBG("got filesize: " << fileSize);
 
 	// We assume the size to be 1. If not one, might cause trouble
-	DBG("sending if ok: " << fileSizeOk << "(" << sizeof(fileSizeOk) << ")");
 	if (send(sockfd, &fileSizeOk, sizeof(fileSizeOk), 0) < 0)
 	{
 		ERROR_MESSAGE("send");
@@ -89,18 +91,13 @@ void* connectionHandler(void* connfd)
 		goto finish;
 	}
 
-	DBG("Getting file name (and maybe content)");
 	if ((bytesRead = recv(sockfd, fileName, sizeof(fileName), 0)) < 0)
 	{
 		ERROR_MESSAGE("recv");
 		goto error;
 	}
 	
-	// TODO remove
-	DBG("bytes read " << bytesRead << ", filenamelen:" << strlen(fileName)); 
-	// TODO Remove
 	fileNameLen = strlen(fileName);
-	DBG("filename: " << fileName);
 	file = fopen(fileName, "wb");
 	if (file == NULL)
 	{
@@ -119,7 +116,6 @@ void* connectionHandler(void* connfd)
 	memcpy(buffer, &fileName[fileNameLen+1], bytesRead);
 	do
 	{
-		DBG("Need to write " << bytesRead);
 		bytesWritten = 0;
 		
 		while (bytesWritten < bytesRead)	
@@ -142,7 +138,6 @@ void* connectionHandler(void* connfd)
 
 	} while(totalBytes < fileSize);
 
-	DBG("Finished successfully!!");	
 	goto finish;
 
 error:

@@ -31,8 +31,6 @@ using namespace std;
 #define MIN_PORT 1
 #define MAX_PORT 65535
 
-//TODO remove
-#define DBG(x) 0
 #define BUFFER_SIZE 1024
 
 static char gBuffer[BUFFER_SIZE] = {0};
@@ -93,6 +91,7 @@ int main(int argc, char *argv[])
 	file = fopen(argv[ARG_FILE_LOCAL], "rb");
 	if (file == nullptr)
 	{
+		// TODO check if to print - forum
 		cout << USAGE << endl;
 		goto error;
 	}
@@ -131,8 +130,6 @@ int main(int argc, char *argv[])
 	}
 
 	// Convert to network byte-order - if ever used again, remember to convert back
-	// TODO check we don't use it again (Do only after ex is complete)
-	DBG("sending filesize: " << fileSize << "(" << sizeof(fileSize) << ")");
 	fileSize = htonl(fileSize);
 	if (send(sockfd, &fileSize, sizeof(fileSize), 0) < 0)
 	{
@@ -146,7 +143,6 @@ int main(int argc, char *argv[])
 		ERROR_MESSAGE("recv");
 		goto error;
 	}
-	DBG("fileSizeok? " << fileSizeOk);
 
 	if (! fileSizeOk)
 	{
@@ -154,8 +150,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	DBG("sending filename: " << argv[ARG_FILE_SERVER] << "(" << sizeof(char)*(strlen(argv[ARG_FILE_SERVER])+1) << " bytes)");
-	// TODO remove
+	// Send name of file on server
 	if (sendBuffer(sockfd, argv[ARG_FILE_SERVER], (strlen(argv[ARG_FILE_SERVER])+1)*sizeof(char)) < 0)
 	{
 		ERROR_MESSAGE("send");
@@ -182,7 +177,6 @@ int main(int argc, char *argv[])
 		totalBytes += bytesRead;
 	}
 
-	DBG("finished successfully");
 	goto finish;
 error:
 	errorOccurred = true;
