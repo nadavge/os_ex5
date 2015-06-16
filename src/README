@@ -1,0 +1,87 @@
+nadavg, ddanon
+Nadav Geva (206338865), Daniel Danon (313364861)
+Ex: 5
+
+FILES:
+Makefile - Does all the magic
+README - This file :)
+srftp.cpp	- Main file for the server, handles the server operations.
+srftp.h		- Header file for the server's main file.
+clftp.cpp	- Main file for the client, handles the client operations.
+clftp.h		- Header file for the block class.
+utils.cpp	- The utility file, mainly for the reading int function which is mutual for both files.
+utils.h		- Header file for the utility file
+
+
+IMPLEMENTATION NOTES:
+
+We decided to implement as suggested by the course, using a simple protocol which
+	first sends the size of the file, wait's for an answer (OK) or quits if not,
+	and then sends the filename, NULL, and the file contents.
+
+ANSWERS:
+
+
+1. Reliable file transfer protocol over UDP connection (10 points).
+In this EX, you are required to implement a file transfer protocol over TCP
+connection. The question is how it could be done over UDP connection. You shall
+develop an efficient and reliable file transfer protocol over UDP connection. You
+should take into account the problems that arise by using UDP, and solve them in
+your suggested protocol.
+You are required to describe such protocol, explain how it solves each problem
+and why it is efficient. Finally, specify what are the main differences in the
+implementation of such a protocol comparing to your implementation (FTP over
+TCP), focusing on the server side.
+
+We'd probably want to add all the things that TCP natively provides us.
+We'd address in our answer the following problems:
+ * Lost packets
+ * Wrong order of arrival
+
+We will create our "own" protocol for data validation and handshaking.
+First, since UDP checksum is optional, we'll either force using it,
+and if we can't, we'll add each packet a checksum field which will make sure the data
+was passed correctly 
+
+Also, each packet will contain it's offset in the file (constant off_t size),
+	so if they arrive in different order the server we'll be able to place them
+	at different places of the file at the server's path.
+
+Now, for the packet loss:
+we have two options. We could use the naive solution, and each time we send
+	a portion of the file, we would wait for a response saying the data was received.
+That'd be a bit inefficient as we'd spend most of our time waiting for validation,
+	so we could use solutions such as Go-Back-N (which means that we would keep sending
+	packets, but have a maximum (N) number of packets without validation before we'd hold
+	wait for some timeout, and start resending them). each time the server will receive
+	it will also send back it received this specific byte offset packet,
+	and will answer any other packets from the client with the same offset also with a
+		"received" response. Of course - we'll also save the time which the packet was sent in.
+After some number of timeouts we'll assume 
+		
+(Below is an example for the Go-Back-N method):
+So for example, if the file size is 2000, and we have a buffer size of 100,
+we'll start sending packets with bytes 0-100, 100-200, 200-300, 300-400,
+ and lets say N is 4, and we choose a timeout of 4 seconds.
+ if we'll receive an ACK for some packet, we'll mark it as received and send another one.
+ If it's been more than 4 seconds, we'll mark this packet as dropped and resend it (and
+ reset its timer).
+ 
+
+Of course, we could further improve it (using TCP congestion control method)
+ by checking the limit of our buffer, ideal timeout, etc.
+ 
+The main differences in our opinion would be handling Out of order packets and Packet loss.
+We'd need to actually handle this in our C code instead of relying on the network driver
+	to do the "dirty job" for us.
+	
+
+2. Explaining the graph.
+As we can see, for packets that are until 1000 bytes, we get almost the same time.
+This may happen since we use a buffer size of 1000, and probably also because of the MTU.
+As the graph progresses, we calculated and saw that "per-byte" time decreases,
+which probably happens because the overhead of creating the socket and sending the filesize
+does take a while, especially because we ran it on a WIFI network so the latency was not small.
+We sent each file 10 times, and used 1B, 100B, 1KB, 10KB, 1M, 10M and 100M.
+From 1M to 100M, the time progresses in a nearly-linear way, which matches the expected result.
+
