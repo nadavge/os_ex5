@@ -39,8 +39,7 @@ static char gBuffer[BUFFER_SIZE] = {0};
 
 #define HERROR_MESSAGE(libraryName) GENERAL_ERROR_MESSAGE(libraryName, h_errno)
 #define ERROR_MESSAGE(libraryName) GENERAL_ERROR_MESSAGE(libraryName, errno)
-// TODO remove line
-#define GENERAL_ERROR_MESSAGE(libraryName, errVar) cerr << __LINE__ << ". Error: function:" << libraryName << " errno:" << errVar << "." << endl
+#define GENERAL_ERROR_MESSAGE(libraryName, errVar) cerr << "Error: function:" << libraryName << " errno:" << errVar << "." << endl
 #define USAGE "Usage: clftp server-port server-hostname file-to-transfer filename-in-server"
 #define MSG_FILE_TOO_BIG "Transmission failed: too big file"
 

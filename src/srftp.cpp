@@ -39,7 +39,7 @@ using namespace std;
 #define DBG(x) 0
 #define HERROR_MESSAGE(libraryName) GENERAL_ERROR_MESSAGE(libraryName, h_errno)
 #define ERROR_MESSAGE(libraryName) GENERAL_ERROR_MESSAGE(libraryName, errno)
-#define GENERAL_ERROR_MESSAGE(libraryName, errVar) cerr << "Error: function:" << libraryName << "errno:" << errVar << "." << endl
+#define GENERAL_ERROR_MESSAGE(libraryName, errVar) cerr << "Error: function:" << libraryName << " errno:" << errVar << "." << endl
 #define USAGE "Usage: srftp server-port max-file-size"
 
 // ================================= GLOBALS ========================================= //
