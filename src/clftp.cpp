@@ -42,6 +42,8 @@ static char gBuffer[BUFFER_SIZE] = {0};
 #define MSG_FILE_TOO_BIG "Transmission failed: too big file"
 
 // ================================= IMPLEMENTATION ================================== //
+
+
 /**
 * @brief Check if file exists
 *
@@ -49,14 +51,17 @@ static char gBuffer[BUFFER_SIZE] = {0};
 *
 * @return true if the path exists and it is a regular file, false otherwise
 */
+
 bool fileExistsAndEditable(const char* path)
 {
 	struct stat pathStat;
+	// Check if exists
 	if (! access( fname, F_OK ))
 	{
 		return false;
 	}
 	stat(path, &pathStat);
+	//Check if regular file
 	return S_ISREG(pathStat.st_mode);
 	
 	
@@ -110,6 +115,12 @@ int main(int argc, char *argv[])
 	}
 
 	if (strToNum(argv[ARG_PORT], &port) == -1 || port < MIN_PORT || MAX_PORT < port)
+	{
+		cout << USAGE << endl;
+		goto error;
+	}
+	
+	if (! fileExistsAndEditable(argv[ARG_FILE_LOCAL]))
 	{
 		cout << USAGE << endl;
 		goto error;
