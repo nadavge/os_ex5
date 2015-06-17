@@ -42,6 +42,25 @@ static char gBuffer[BUFFER_SIZE] = {0};
 #define MSG_FILE_TOO_BIG "Transmission failed: too big file"
 
 // ================================= IMPLEMENTATION ================================== //
+/**
+* @brief Check if file exists
+*
+* @param path the path to the file
+*
+* @return true if the path exists and it is a regular file, false otherwise
+*/
+bool fileExistsAndEditable(const char* path)
+{
+	struct stat pathStat;
+	if (! access( fname, F_OK ))
+	{
+		return false;
+	}
+	stat(path, &pathStat);
+	return S_ISREG(pathStat.st_mode);
+	
+	
+}
 
 /**
 * @brief Sends a buffer from memory through a socket
