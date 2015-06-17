@@ -44,28 +44,7 @@ static char gBuffer[BUFFER_SIZE] = {0};
 // ================================= IMPLEMENTATION ================================== //
 
 
-/**
-* @brief Check if file exists
-*
-* @param path the path to the file
-*
-* @return true if the path exists and it is a regular file, false otherwise
-*/
 
-bool fileExistsAndEditable(const char* path)
-{
-	struct stat pathStat;
-	// Check if exists
-	if (! access( fname, F_OK ))
-	{
-		return false;
-	}
-	stat(path, &pathStat);
-	//Check if regular file
-	return S_ISREG(pathStat.st_mode);
-	
-	
-}
 
 /**
 * @brief Sends a buffer from memory through a socket
@@ -119,8 +98,23 @@ int main(int argc, char *argv[])
 		cout << USAGE << endl;
 		goto error;
 	}
+
+	// Check if exists and readable
+	if (! access(argv[ARG_FILE_LOCAL], R_OK))
+	{
+		cout << USAGE << endl;
+		goto error;
+	}
 	
-	if (! fileExistsAndEditable(argv[ARG_FILE_LOCAL]))
+	
+	if (stat(path, &fileStat) == -1)
+	{
+		ERROR_MESSAGE("stat");
+		goto error;
+	}
+	
+	// Check whether it's a regular file
+	if (! S_ISREG(fileStat.st_mode))
 	{
 		cout << USAGE << endl;
 		goto error;
@@ -129,11 +123,13 @@ int main(int argc, char *argv[])
 	file = fopen(argv[ARG_FILE_LOCAL], "rb");
 	if (file == nullptr)
 	{
-		// TODO check if to print - forum
 		ERROR_MESSAGE("fopen");
 		goto error;
 	}
-
+	
+	// We know we already read the file stats before, but we want to make sure
+	//   the file size is correct in case there was some context-switch and the file
+	//   contents was changed in between.
 	if(fstat(fileno(file), &fileStat) < 0)
 	{
 		ERROR_MESSAGE("fstat");
