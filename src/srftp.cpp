@@ -162,6 +162,7 @@ finish:
 int main(int argc, char *argv[])
 {
 	int sockfd = -1;
+	int tempConnfd = -1;
 	int* connfd = nullptr;
 	int port = -1;
 	struct sockaddr_in servAddr = {0};
@@ -214,6 +215,20 @@ int main(int argc, char *argv[])
 	
 	for ever // It's a joke, don't kill us :(
 	{
+
+		tempConnfd = accept(sockfd, (struct sockaddr*) &clientAddr, &clientLen);
+		if (tempConnfd < 0)
+		{
+			delete connfd;
+
+			ERROR_MESSAGE("accept");
+			goto error;
+		}
+
+		/*
+		 * Since we send the fd to a new thread, to avoid race conditions we must
+		 * allocate a variable just for the specific thread.
+		 */
 		connfd = new(nothrow) int(0);
 		if (connfd == nullptr)
 		{
@@ -221,14 +236,7 @@ int main(int argc, char *argv[])
 			goto error;
 		}
 
-		*connfd = accept(sockfd, (struct sockaddr*) &clientAddr, &clientLen);
-		if (*connfd < 0)
-		{
-			delete connfd;
-
-			ERROR_MESSAGE("accept");
-			goto error;
-		}
+		*connfd = tempConnfd;
 
 		pthread_create(&tid, NULL, connectionHandler, connfd);
 		pthread_detach(tid);
