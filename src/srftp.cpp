@@ -91,7 +91,7 @@ void* connectionHandler(void* connfd)
 		goto finish;
 	}
 
-	if ((bytesRead = recv(sockfd, fileName, sizeof(fileName), 0)) < 0)
+	if ((bytesRead = recv(sockfd, fileName, sizeof(fileName), 0)) <= 0)
 	{
 		ERROR_MESSAGE("recv");
 		goto error;
@@ -114,11 +114,12 @@ void* connectionHandler(void* connfd)
 	bytesRead = bytesRead - (fileNameLen + 1);
 	totalBytes = 0;
 	memcpy(buffer, &fileName[fileNameLen+1], bytesRead);
-	do
+
+	while(totalBytes < fileSize)
 	{
 		bytesWritten = 0;
 		
-		while (bytesWritten < bytesRead)	
+		while (bytesWritten < bytesRead)
 		{
 			bytesWritten += fwrite(&buffer[bytesWritten], sizeof(char), bytesRead-bytesWritten, file);
 
@@ -130,13 +131,20 @@ void* connectionHandler(void* connfd)
 
 		totalBytes += bytesWritten;
 
-		if ((bytesRead = recv(sockfd, buffer, sizeof(buffer), 0)) < 0)
+		bytesRead = recv(sockfd, buffer, sizeof(buffer), 0);
+
+		/*
+		 * Check if one of the following happened:
+		 *  1. The connection ended before we finished reading the file
+		 *  2. An error occurred on read
+		 */
+		if ((bytesRead == 0 && totalBytes < fileSize) || bytesRead < 0)
 		{
 			ERROR_MESSAGE("recv");
 			goto error;
 		}
 
-	} while(totalBytes < fileSize);
+	}
 
 	goto finish;
 

@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 	}
 	fileSize = ntohl(fileSize);
 
-	if (recv(sockfd, &fileSizeOk, sizeof(fileSizeOk), 0) < 0)
+	if (recv(sockfd, &fileSizeOk, sizeof(fileSizeOk), 0) <= 0)
 	{
 		ERROR_MESSAGE("recv");
 		goto error;
