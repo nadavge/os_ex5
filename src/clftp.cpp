@@ -100,14 +100,13 @@ int main(int argc, char *argv[])
 	}
 
 	// Check if exists and readable
-	if (! access(argv[ARG_FILE_LOCAL], R_OK))
+	if (access(argv[ARG_FILE_LOCAL], R_OK) < 0)
 	{
 		cout << USAGE << endl;
 		goto error;
 	}
 	
-	
-	if (stat(path, &fileStat) == -1)
+	if (stat(argv[ARG_FILE_LOCAL], &fileStat) == -1)
 	{
 		ERROR_MESSAGE("stat");
 		goto error;
