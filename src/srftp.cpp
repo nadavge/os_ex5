@@ -1,7 +1,7 @@
 /*
- * clftp.cpp
+ * srftp.cpp
  *
- * A file transfer protocol client
+ * A file transfer protocol server
  *
  * Author: Daniel Danon
  *         Nadav Geva
